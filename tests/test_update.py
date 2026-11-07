@@ -110,7 +110,20 @@ def test_a_future_dated_cache_is_stale(cache, monkeypatch):
     future["checked_at"] = float("nan")
     cache.write_text(json.dumps(future))
     assert update._read_cache(1000, "stable") is None
-    assert update._read_majors(1000, "stable") is None
+@pytest.mark.parametrize(
+    "checked_at", [0, 9_999_999_999, float("nan")], ids=["expired", "future-dated", "nan"]
+)
+def test_a_stale_cache_refetches(cache, monkeypatch, checked_at):
+    """A clock that jumped back leaves checked_at in the future: stale, not fresh."""
+    monkeypatch.setattr(update, "_fetch", _fetch(RELEASE_JSON))
+    update.latest()
+    stale = json.loads(cache.read_text())
+    stale["checked_at"] = checked_at
+    cache.write_text(json.dumps(stale))
+    monkeypatch.setattr(update, "_fetch", _fetch([_release("v0.5.0")]))
+    assert update.latest_in_major(0).tag == "v0.5.0"
+    cache.write_text(json.dumps(stale))
+    assert update.latest().tag == "v0.5.0"
 
 
 @pytest.mark.parametrize(
