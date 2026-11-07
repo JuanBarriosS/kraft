@@ -195,7 +195,7 @@ def _read_cache(now: float, channel: str) -> Release | None:
         if blob is None:
             return None
         age = now - float(blob["checked_at"])
-        if blob.get("channel", "stable") != channel or age < 0 or age >= CACHE_TTL:
+        if blob.get("channel", "stable") != channel or not (0 <= age < CACHE_TTL):
             return None
         return Release(tag=blob["tag"], wheel_url=blob["wheel_url"])
     except (ValueError, KeyError, TypeError):
@@ -210,7 +210,7 @@ def _read_majors(now: float, channel: str) -> dict[int, Release] | None:
         if blob is None or "majors" not in blob:
             return None
         age = now - float(blob["checked_at"])
-        if blob.get("channel", "stable") != channel or age < 0 or age >= CACHE_TTL:
+        if blob.get("channel", "stable") != channel or not (0 <= age < CACHE_TTL):
             return None
         return {
             int(major): Release(tag=r["tag"], wheel_url=r["wheel_url"])
