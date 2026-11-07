@@ -78,38 +78,6 @@ def test_a_cache_hit_does_not_fetch(cache, monkeypatch):
     assert update.latest().tag == "v0.4.0"
 
 
-def test_an_expired_cache_refetches(cache, monkeypatch):
-    monkeypatch.setattr(update, "_fetch", _fetch(RELEASE_JSON))
-    update.latest()
-    stale = json.loads(cache.read_text())
-    stale["checked_at"] = 0
-    cache.write_text(json.dumps(stale))
-    newer = [
-        {
-            "tag_name": "v0.5.0",
-            "draft": False,
-            "prerelease": False,
-            "assets": [{"name": "k.whl", "browser_download_url": "https://x/n.whl"}],
-        }
-    ]
-    monkeypatch.setattr(update, "_fetch", _fetch(newer))
-    assert update.latest().tag == "v0.5.0"
-
-
-def test_a_future_dated_cache_is_stale(cache, monkeypatch):
-    """A clock that jumped back leaves checked_at in the future: a negative
-    age must count as stale in both readers, not fresh."""
-    monkeypatch.setattr(update, "_fetch", _fetch(RELEASE_JSON))
-    update.latest()
-    future = json.loads(cache.read_text())
-    future["checked_at"] = 9_999_999_999
-    cache.write_text(json.dumps(future))
-    assert update._read_cache(1000, "stable") is None
-    assert update._read_majors(1000, "stable") is None
-
-    future["checked_at"] = float("nan")
-    cache.write_text(json.dumps(future))
-    assert update._read_cache(1000, "stable") is None
 @pytest.mark.parametrize(
     "checked_at", [0, 9_999_999_999, float("nan")], ids=["expired", "future-dated", "nan"]
 )
